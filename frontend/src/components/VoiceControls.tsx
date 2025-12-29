@@ -3,18 +3,24 @@ import React, { useState, useEffect } from 'react';
 interface VoiceControlsProps {
   isInVoiceChat: boolean;
   isMuted: boolean;
+  isScreenSharing: boolean;
   onJoinVoice: () => void;
   onLeaveVoice: () => void;
   onToggleMute: () => void;
+  onStartScreenShare: () => void;
+  onStopScreenShare: () => void;
   speakingUsers: Set<number>;
 }
 
 export const VoiceControls: React.FC<VoiceControlsProps> = ({
   isInVoiceChat,
   isMuted,
+  isScreenSharing,
   onJoinVoice,
   onLeaveVoice,
   onToggleMute,
+  onStartScreenShare,
+  onStopScreenShare,
   speakingUsers,
 }) => {
   const [error, setError] = useState<string>('');
@@ -167,6 +173,52 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
             <span>📞</span>
             Leave Voice
           </button>
+
+          {/* Screen share button */}
+          <button
+            onClick={isScreenSharing ? onStopScreenShare : onStartScreenShare}
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: isScreenSharing ? '#FF6B6B' : '#764ba2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+          >
+            <span>{isScreenSharing ? '🛑' : '🖥️'}</span>
+            {isScreenSharing ? 'Stop Sharing' : 'Share Screen'}
+          </button>
+        </div>
+      )}
+
+      {/* Screen sharing indicator */}
+      {isScreenSharing && (
+        <div style={{
+          marginTop: '12px',
+          padding: '8px',
+          background: '#FFE0F0',
+          border: '1px solid #764ba2',
+          borderRadius: '4px',
+          fontSize: '12px',
+          color: '#764ba2',
+          fontWeight: 'bold',
+          textAlign: 'center',
+        }}>
+          📺 You are sharing your screen
         </div>
       )}
 

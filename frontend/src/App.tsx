@@ -3,6 +3,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { GameCanvas } from './components/GameCanvas';
 import { ChatBox } from './components/ChatBox';
 import { VoiceControls } from './components/VoiceControls';
+import { ScreenViewer } from './components/ScreenViewer';
 import { api } from './services/api';
 import { WebSocketService } from './services/websocket';
 import { VoiceService } from './services/voice';
@@ -22,7 +23,10 @@ function App() {
   const [onlineUsers, setOnlineUsers] = useState<number>(0);
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [speakingUsers, setSpeakingUsers] = useState<Set<number>>(new Set());
+  const [screenSharingUsers, setScreenSharingUsers] = useState<Map<number, { username: string, videoElement: HTMLVideoElement }>>(new Map());
+  const [viewingScreen, setViewingScreen] = useState<{ userId: number, username: string, videoElement: HTMLVideoElement } | null>(null);
 
   const handleJoin = async (username: string, avatar: string) => {
     setLoading(true);
@@ -257,10 +261,47 @@ function App() {
     }
   }, [voiceService, wsService]);
 
+  const handleStartScreenShare = useCallback(async () => {
+    try {
+      await voiceService.startScreenShare();
+      setIsScreenSharing(true);
+      
+      // Notify server
+      if (wsService) {
+        wsService.send({ type: 'screen_share_start', data: {} });
+      }
+    } catch (error) {
+      console.error('Failed to start screen share:', error);
+      alert('Failed to start screen sharing. Please check permissions.');
+    }
+  }, [voiceService, wsService]);
+
+  const handleStopScreenShare = useCallback(() => {
+    voiceService.stopScreenShare();
+    setIsScreenSharing(false);
+    
+    // Notify server
+    if (wsService) {
+      wsService.send({ type: 'screen_share_stop', data: {} });
+    }
+  }, [voiceService, wsService]);
+
   // Update online users count
   useEffect(() => {
     setOnlineUsers(players.size + (currentUser ? 1 : 0));
   }, [players, currentUser]);
+
+  // Handle ESC key to close screen viewer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && viewingScreen) {
+        setViewingScreen(null);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingScreen]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -360,13 +401,82 @@ function App() {
           <VoiceControls
             isInVoiceChat={isInVoiceChat}
             isMuted={isMuted}
+            isScreenSharing={isScreenSharing}
             onJoinVoice={handleJoinVoice}
             onLeaveVoice={handleLeaveVoice}
             onToggleMute={handleToggleMute}
+            onStartScreenShare={handleStartScreenShare}
+            onStopScreenShare={handleStopScreenShare}
             speakingUsers={speakingUsers}
           />
+
+          {/* Screen sharing list */}
+          {screenSharingUsers.size > 0 && (
+            <div style={{
+              background: 'white',
+              border: '2px solid #333',
+              borderRadius: '8px',
+              padding: '16px',
+            }}>
+              <h3 style={{
+                margin: '0 0 12px 0',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <span>🖥️</span>
+                Active Screens ({screenSharingUsers.size})
+              </h3>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                {Array.from(screenSharingUsers.entries()).map(([userId, { username, videoElement }]) => (
+                  <button
+                    key={userId}
+                    onClick={() => setViewingScreen({ userId, username, videoElement })}
+                    style={{
+                      padding: '12px',
+                      background: '#764ba2',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#6a3f92';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#764ba2';
+                    }}
+                  >
+                    <span>📺 {username}</span>
+                    <span style={{ fontSize: '12px' }}>View →</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Screen viewer overlay */}
+      {viewingScreen && (
+        <ScreenViewer
+          userId={viewingScreen.userId}
+          username={viewingScreen.username}
+          videoElement={viewingScreen.videoElement}
+          onClose={() => setViewingScreen(null)}
+        />
+      )}
     </div>
   );
 }

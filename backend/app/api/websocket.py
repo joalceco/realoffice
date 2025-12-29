@@ -79,6 +79,68 @@ async def websocket_endpoint(websocket: WebSocket, workspace_id: int, user_id: i
                         # Global chat - broadcast to all
                         await manager.broadcast_to_workspace(workspace_id, chat_message)
             
+            elif message_type == "webrtc_signal":
+                # Handle WebRTC signaling (offer, answer, ICE candidates)
+                signal_data = data.get("data", {})
+                target_user = signal_data.get("target_user_id")
+                
+                if target_user:
+                    await signaling_manager.send_signal(workspace_id, target_user, {
+                        "from_user_id": user_id,
+                        "signal_type": signal_data.get("signal_type"),
+                        "signal": signal_data.get("signal")
+                    })
+            
+            elif message_type == "voice_join":
+                # User joined voice chat
+                signaling_manager.add_to_voice(workspace_id, user_id)
+                
+                # Notify all users that someone joined voice
+                await manager.broadcast_to_workspace(workspace_id, {
+                    "type": "voice_joined",
+                    "data": {
+                        "user_id": user_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                })
+            
+            elif message_type == "voice_leave":
+                # User left voice chat
+                signaling_manager.remove_from_voice(workspace_id, user_id)
+                
+                await manager.broadcast_to_workspace(workspace_id, {
+                    "type": "voice_left",
+                    "data": {
+                        "user_id": user_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                })
+            
+            elif message_type == "voice_state":
+                # User is speaking/muted
+                is_speaking = data.get("data", {}).get("is_speaking", False)
+                await signaling_manager.broadcast_voice_state(workspace_id, user_id, is_speaking)
+            
+            elif message_type == "screen_share_start":
+                # User started screen sharing
+                await manager.broadcast_to_workspace(workspace_id, {
+                    "type": "screen_share_started",
+                    "data": {
+                        "user_id": user_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                })
+            
+            elif message_type == "screen_share_stop":
+                # User stopped screen sharing
+                await manager.broadcast_to_workspace(workspace_id, {
+                    "type": "screen_share_stopped",
+                    "data": {
+                        "user_id": user_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                })
+            
             elif message_type == "request_state":
                 # Send current positions of all users
                 positions = []

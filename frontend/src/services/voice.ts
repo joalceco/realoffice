@@ -1,10 +1,14 @@
 export class VoiceService {
   private peerConnections: Map<number, RTCPeerConnection> = new Map();
   private localStream: MediaStream | null = null;
+  private screenStream: MediaStream | null = null;
   private onSignalCallback: ((signal: any) => void) | null = null;
   private audioElements: Map<number, HTMLAudioElement> = new Map();
+  private videoElements: Map<number, HTMLVideoElement> = new Map();
   private isMuted: boolean = false;
   private isInVoiceChat: boolean = false;
+  private isScreenSharing: boolean = false;
+  private screenSharingSenders: Map<number, RTCRtpSender> = new Map();
 
   // STUN servers for NAT traversal
   private iceServers = {
@@ -35,6 +39,11 @@ export class VoiceService {
   }
 
   leaveVoiceChat(): void {
+    // Stop screen sharing if active
+    if (this.isScreenSharing) {
+      this.stopScreenShare();
+    }
+
     // Stop all tracks
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => track.stop());
@@ -51,6 +60,13 @@ export class VoiceService {
       audio.srcObject = null;
     });
     this.audioElements.clear();
+
+    // Remove all video elements
+    this.videoElements.forEach(video => {
+      video.pause();
+      video.srcObject = null;
+    });
+    this.videoElements.clear();
 
     this.isInVoiceChat = false;
     console.log('Left voice chat');
@@ -172,16 +188,32 @@ export class VoiceService {
   }
 
   private handleRemoteStream(userId: number, stream: MediaStream): void {
-    // Create or get audio element for this user
-    let audioElement = this.audioElements.get(userId);
+    const hasVideo = stream.getVideoTracks().length > 0;
     
-    if (!audioElement) {
-      audioElement = new Audio();
-      audioElement.autoplay = true;
-      this.audioElements.set(userId, audioElement);
+    if (hasVideo) {
+      // Handle video stream (screen share)
+      let videoElement = this.videoElements.get(userId);
+      
+      if (!videoElement) {
+        videoElement = document.createElement('video');
+        videoElement.autoplay = true;
+        videoElement.playsInline = true;
+        this.videoElements.set(userId, videoElement);
+      }
+      
+      videoElement.srcObject = stream;
+    } else {
+      // Handle audio stream
+      let audioElement = this.audioElements.get(userId);
+      
+      if (!audioElement) {
+        audioElement = new Audio();
+        audioElement.autoplay = true;
+        this.audioElements.set(userId, audioElement);
+      }
+      
+      audioElement.srcObject = stream;
     }
-
-    audioElement.srcObject = stream;
   }
 
   onSignal(callback: (signal: any) => void): void {
@@ -231,5 +263,79 @@ export class VoiceService {
       return Math.random(); // Placeholder - implement proper audio analysis
     }
     return 0;
+  }
+
+  // Screen sharing methods
+  async startScreenShare(): Promise<void> {
+    if (!this.isInVoiceChat) {
+      throw new Error('Must join voice chat before screen sharing');
+    }
+
+    try {
+      // Request screen capture
+      this.screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: 'monitor'
+        } as any,
+        audio: false
+      });
+
+      // Handle when user stops sharing via browser UI
+      this.screenStream.getVideoTracks()[0].onended = () => {
+        this.stopScreenShare();
+      };
+
+      // Add screen track to all existing peer connections
+      const videoTrack = this.screenStream.getVideoTracks()[0];
+      
+      this.peerConnections.forEach((pc, userId) => {
+        const sender = pc.addTrack(videoTrack, this.screenStream!);
+        this.screenSharingSenders.set(userId, sender);
+      });
+
+      this.isScreenSharing = true;
+      console.log('Started screen sharing');
+    } catch (error) {
+      console.error('Failed to start screen sharing:', error);
+      throw new Error('Screen sharing permission denied');
+    }
+  }
+
+  stopScreenShare(): void {
+    if (this.screenStream) {
+      // Stop all screen tracks
+      this.screenStream.getTracks().forEach(track => track.stop());
+      this.screenStream = null;
+    }
+
+    // Remove screen track from all peer connections
+    this.screenSharingSenders.forEach((sender, userId) => {
+      const pc = this.peerConnections.get(userId);
+      if (pc) {
+        pc.removeTrack(sender);
+      }
+    });
+    this.screenSharingSenders.clear();
+
+    this.isScreenSharing = false;
+    console.log('Stopped screen sharing');
+  }
+
+  isCurrentlyScreenSharing(): boolean {
+    return this.isScreenSharing;
+  }
+
+  getVideoElement(userId: number): HTMLVideoElement | undefined {
+    return this.videoElements.get(userId);
+  }
+
+  getScreenSharingUsers(): number[] {
+    const users: number[] = [];
+    this.videoElements.forEach((video, userId) => {
+      if (video.srcObject && (video.srcObject as MediaStream).getVideoTracks().length > 0) {
+        users.push(userId);
+      }
+    });
+    return users;
   }
 }

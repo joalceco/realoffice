@@ -14,6 +14,10 @@ A Gather-like virtual office web application where users can join workspaces, mo
   - Mute/unmute controls
   - Visual speaking indicators
   - Easy join/leave voice chat
+- 🖥️ **Screen Sharing** - Share your screen with teammates
+  - One-click screen sharing
+  - View multiple shared screens
+  - Fullscreen viewer with ESC to exit
 - 🎨 **Avatar Selection** - Choose from 5 colorful avatars
 - 🏢 **Zones & Rooms** - Designated areas like meeting rooms and lounges
 - 🪑 **Interactive Objects** - Desks, chairs, and other office furniture
@@ -96,6 +100,8 @@ Open your browser and navigate to http://localhost:3000
 - Explore different zones and rooms
 - Click "Join Voice Chat" to enable voice communication
 - Use the mute button to control your microphone
+- Click "Share Screen" to present to your teammates
+- View others' shared screens from the Active Screens list
 
 ## API Documentation
 
@@ -303,6 +309,7 @@ Messages sent via proximity chat are only visible to users within a 5-tile radiu
 ## Future Enhancements
 
 - 🎥 ~~Video/Audio chat integration~~ ✅ **Audio chat implemented!**
+- 🖥️ ~~Screen sharing~~ ✅ **Screen sharing implemented!**
 - 📹 Video chat (webcam support)
 - 📅 Calendar integration for meetings
 - 🎯 Status indicators (busy, available, away)
@@ -310,7 +317,6 @@ Messages sent via proximity chat are only visible to users within a 5-tile radiu
 - 📱 Mobile support
 - 🔐 Authentication and user accounts
 - 👔 Custom avatar creation
-- 🎪 Screen sharing capabilities
 - 📊 Analytics and usage statistics
 
 ## Troubleshooting
