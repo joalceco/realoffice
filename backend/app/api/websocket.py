@@ -94,6 +94,9 @@ async def websocket_endpoint(websocket: WebSocket, workspace_id: int, user_id: i
                 })
     
     except WebSocketDisconnect:
+        pass
+    finally:
+        # Always cleanup on disconnect
         manager.disconnect(workspace_id, user_id)
         
         # Notify others that user left

@@ -70,4 +70,22 @@ export const api = {
     const response = await fetch(url);
     return response.json();
   },
+
+  async createZone(zone: { name: string; workspace_id: number; x: number; y: number; width: number; height: number; zone_type: string }): Promise<Zone> {
+    const response = await fetch(`${API_URL}/api/zones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(zone),
+    });
+    return response.json();
+  },
+
+  async createObject(obj: { name: string; workspace_id: number; x: number; y: number; object_type: string }): Promise<InteractiveObject> {
+    const response = await fetch(`${API_URL}/api/objects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj),
+    });
+    return response.json();
+  },
 };

@@ -32,7 +32,8 @@ class ConnectionManager:
             for user_id, connection in self.active_connections[workspace_id].items():
                 try:
                     await connection.send_json(message)
-                except:
+                except Exception:
+                    # Connection failed, mark for cleanup
                     disconnected.append(user_id)
             
             # Clean up disconnected users
@@ -44,7 +45,8 @@ class ConnectionManager:
             if user_id in self.active_connections[workspace_id]:
                 try:
                     await self.active_connections[workspace_id][user_id].send_json(message)
-                except:
+                except Exception:
+                    # Connection failed, clean up
                     self.disconnect(workspace_id, user_id)
 
     def update_user_position(self, user_id: int, workspace_id: int, x: float, y: float):

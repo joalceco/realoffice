@@ -55,7 +55,9 @@ export class WebSocketService {
       this.reconnectAttempts++;
       console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       setTimeout(() => {
-        this.connect();
+        this.connect().catch(() => {
+          console.error('Reconnection attempt failed');
+        });
       }, 2000 * this.reconnectAttempts);
     }
   }

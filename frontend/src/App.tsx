@@ -29,46 +29,34 @@ function App() {
         currentWorkspace = await api.createWorkspace('Default Office', 50, 50);
         
         // Create some zones and objects for the workspace
-        await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/zones`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'Meeting Room',
-            workspace_id: currentWorkspace.id,
-            x: 10,
-            y: 10,
-            width: 8,
-            height: 6,
-            zone_type: 'meeting_area'
-          }),
+        await api.createZone({
+          name: 'Meeting Room',
+          workspace_id: currentWorkspace.id,
+          x: 10,
+          y: 10,
+          width: 8,
+          height: 6,
+          zone_type: 'meeting_area'
         });
         
-        await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/zones`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'Lounge',
-            workspace_id: currentWorkspace.id,
-            x: 30,
-            y: 10,
-            width: 10,
-            height: 8,
-            zone_type: 'lounge'
-          }),
+        await api.createZone({
+          name: 'Lounge',
+          workspace_id: currentWorkspace.id,
+          x: 30,
+          y: 10,
+          width: 10,
+          height: 8,
+          zone_type: 'lounge'
         });
 
         // Add some desks
         for (let i = 0; i < 5; i++) {
-          await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/objects`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: `Desk ${i + 1}`,
-              workspace_id: currentWorkspace.id,
-              x: 5 + i * 3,
-              y: 25,
-              object_type: 'desk'
-            }),
+          await api.createObject({
+            name: `Desk ${i + 1}`,
+            workspace_id: currentWorkspace.id,
+            x: 5 + i * 3,
+            y: 25,
+            object_type: 'desk'
           });
         }
       } else {
