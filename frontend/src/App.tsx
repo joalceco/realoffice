@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { LoginScreen } from './components/LoginScreen';
 import { GameCanvas } from './components/GameCanvas';
 import { ChatBox } from './components/ChatBox';
+import { VoiceControls } from './components/VoiceControls';
 import { api } from './services/api';
 import { WebSocketService } from './services/websocket';
+import { VoiceService } from './services/voice';
 import { PlayerState, ChatMessage, Zone, InteractiveObject, Workspace } from './types';
 
 function App() {
@@ -16,7 +18,11 @@ function App() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [objects, setObjects] = useState<InteractiveObject[]>([]);
   const [wsService, setWsService] = useState<WebSocketService | null>(null);
+  const [voiceService] = useState<VoiceService>(() => new VoiceService());
   const [onlineUsers, setOnlineUsers] = useState<number>(0);
+  const [isInVoiceChat, setIsInVoiceChat] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [speakingUsers, setSpeakingUsers] = useState<Set<number>>(new Set());
 
   const handleJoin = async (username: string, avatar: string) => {
     setLoading(true);
@@ -90,6 +96,16 @@ function App() {
       // Connect to WebSocket
       const ws = new WebSocketService(currentWorkspace.id, user.id);
       await ws.connect();
+      
+      // Set up voice service signaling
+      voiceService.onSignal((signal) => {
+        if (ws) {
+          ws.send({
+            type: 'webrtc_signal',
+            data: signal
+          });
+        }
+      });
       
       ws.onMessage((message) => {
         if (message.type === 'position') {
@@ -202,6 +218,45 @@ function App() {
     }
   }, [wsService, currentUser]);
 
+  const handleJoinVoice = useCallback(async () => {
+    try {
+      await voiceService.joinVoiceChat();
+      setIsInVoiceChat(true);
+      
+      // Notify server
+      if (wsService) {
+        wsService.send({ type: 'voice_join', data: {} });
+      }
+    } catch (error) {
+      console.error('Failed to join voice:', error);
+      throw error;
+    }
+  }, [voiceService, wsService]);
+
+  const handleLeaveVoice = useCallback(() => {
+    voiceService.leaveVoiceChat();
+    setIsInVoiceChat(false);
+    setIsMuted(false);
+    
+    // Notify server
+    if (wsService) {
+      wsService.send({ type: 'voice_leave', data: {} });
+    }
+  }, [voiceService, wsService]);
+
+  const handleToggleMute = useCallback(() => {
+    const newMutedState = voiceService.toggleMute();
+    setIsMuted(newMutedState);
+    
+    // Notify server about voice state
+    if (wsService) {
+      wsService.send({
+        type: 'voice_state',
+        data: { is_speaking: !newMutedState }
+      });
+    }
+  }, [voiceService, wsService]);
+
   // Update online users count
   useEffect(() => {
     setOnlineUsers(players.size + (currentUser ? 1 : 0));
@@ -213,8 +268,11 @@ function App() {
       if (wsService) {
         wsService.disconnect();
       }
+      if (voiceService.isActive()) {
+        voiceService.leaveVoiceChat();
+      }
     };
-  }, [wsService]);
+  }, [wsService, voiceService]);
 
   if (!isLoggedIn) {
     return <LoginScreen onJoin={handleJoin} loading={loading} />;
@@ -291,12 +349,23 @@ function App() {
           onMove={handleMove}
           mapWidth={workspace.map_width}
           mapHeight={workspace.map_height}
+          speakingUsers={speakingUsers}
         />
-        <ChatBox
-          messages={chatMessages}
-          onSendMessage={handleSendMessage}
-          currentUserId={currentUser.userId}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <ChatBox
+            messages={chatMessages}
+            onSendMessage={handleSendMessage}
+            currentUserId={currentUser.userId}
+          />
+          <VoiceControls
+            isInVoiceChat={isInVoiceChat}
+            isMuted={isMuted}
+            onJoinVoice={handleJoinVoice}
+            onLeaveVoice={handleLeaveVoice}
+            onToggleMute={handleToggleMute}
+            speakingUsers={speakingUsers}
+          />
+        </div>
       </div>
     </div>
   );

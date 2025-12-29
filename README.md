@@ -9,6 +9,11 @@ A Gather-like virtual office web application where users can join workspaces, mo
 - 💬 **Dual Chat System**
   - Global chat: Message everyone in the workspace
   - Proximity chat: Talk to users nearby (within 5 tiles)
+- 🎤 **Voice Communications** - WebRTC-based peer-to-peer voice chat
+  - Proximity-based voice (spatial audio concept)
+  - Mute/unmute controls
+  - Visual speaking indicators
+  - Easy join/leave voice chat
 - 🎨 **Avatar Selection** - Choose from 5 colorful avatars
 - 🏢 **Zones & Rooms** - Designated areas like meeting rooms and lounges
 - 🪑 **Interactive Objects** - Desks, chairs, and other office furniture
@@ -19,6 +24,7 @@ A Gather-like virtual office web application where users can join workspaces, mo
 ### Frontend
 - **React 18** with **TypeScript**
 - **Canvas API** for 2D rendering
+- **WebRTC** for peer-to-peer voice communications
 - WebSocket client for real-time communication
 - Responsive UI with inline styles
 
@@ -88,6 +94,8 @@ Open your browser and navigate to http://localhost:3000
 - Try the global chat to message everyone
 - Move close to other users and use proximity chat
 - Explore different zones and rooms
+- Click "Join Voice Chat" to enable voice communication
+- Use the mute button to control your microphone
 
 ## API Documentation
 
@@ -113,7 +121,7 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 - `POST /api/objects` - Create an object
 
 #### WebSocket
-- `WS /ws/{workspace_id}/{user_id}` - Real-time communication
+- `WS /ws/{workspace_id}/{user_id}` - Real-time communication and WebRTC signaling
 
 ## WebSocket Messages
 
@@ -144,6 +152,34 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 {
   "type": "request_state",
   "data": {}
+}
+```
+
+**Join Voice Chat**
+```json
+{
+  "type": "voice_join",
+  "data": {}
+}
+```
+
+**Leave Voice Chat**
+```json
+{
+  "type": "voice_leave",
+  "data": {}
+}
+```
+
+**WebRTC Signal** (for voice peer connections)
+```json
+{
+  "type": "webrtc_signal",
+  "data": {
+    "target_user_id": 2,
+    "signal_type": "offer",
+    "signal": { "sdp": "...", "type": "offer" }
+  }
 }
 ```
 
@@ -266,7 +302,8 @@ Messages sent via proximity chat are only visible to users within a 5-tile radiu
 
 ## Future Enhancements
 
-- 🎥 Video/Audio chat integration
+- 🎥 ~~Video/Audio chat integration~~ ✅ **Audio chat implemented!**
+- 📹 Video chat (webcam support)
 - 📅 Calendar integration for meetings
 - 🎯 Status indicators (busy, available, away)
 - 🖼️ Custom backgrounds and themes

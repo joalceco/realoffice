@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.models import User as UserModel
 from app.services.websocket import manager
+from app.services.signaling import signaling_manager
 from datetime import datetime
 import json
 
@@ -12,6 +13,9 @@ router = APIRouter()
 @router.websocket("/ws/{workspace_id}/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, workspace_id: int, user_id: int):
     await manager.connect(websocket, workspace_id, user_id)
+    
+    # Register for signaling
+    signaling_manager.connections.setdefault(workspace_id, {})[user_id] = websocket
     
     # Notify others that user joined
     await manager.broadcast_to_workspace(workspace_id, {
@@ -98,6 +102,11 @@ async def websocket_endpoint(websocket: WebSocket, workspace_id: int, user_id: i
     finally:
         # Always cleanup on disconnect
         manager.disconnect(workspace_id, user_id)
+        
+        # Clean up signaling
+        if workspace_id in signaling_manager.connections:
+            signaling_manager.connections[workspace_id].pop(user_id, None)
+        signaling_manager.remove_from_voice(workspace_id, user_id)
         
         # Notify others that user left
         await manager.broadcast_to_workspace(workspace_id, {

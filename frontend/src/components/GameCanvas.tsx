@@ -9,6 +9,7 @@ interface GameCanvasProps {
   onMove: (x: number, y: number) => void;
   mapWidth: number;
   mapHeight: number;
+  speakingUsers?: Set<number>;
 }
 
 const TILE_SIZE = 32;
@@ -31,6 +32,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   onMove,
   mapWidth,
   mapHeight,
+  speakingUsers = new Set(),
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [keys, setKeys] = useState<Set<string>>(new Set());
@@ -167,12 +169,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     // Draw other players
     players.forEach((player, id) => {
       if (id !== currentUser.userId) {
-        drawPlayer(ctx, player, cameraX, cameraY, false);
+        drawPlayer(ctx, player, cameraX, cameraY, false, speakingUsers.has(id));
       }
     });
 
     // Draw current user (on top)
-    drawPlayer(ctx, currentPlayerState, cameraX, cameraY, true);
+    drawPlayer(ctx, currentPlayerState, cameraX, cameraY, true, speakingUsers.has(currentUser.userId));
   };
 
   const drawPlayer = (
@@ -180,7 +182,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     player: PlayerState,
     cameraX: number,
     cameraY: number,
-    isCurrent: boolean
+    isCurrent: boolean,
+    isSpeaking: boolean = false
   ) => {
     const screenX = player.x * TILE_SIZE - cameraX;
     const screenY = player.y * TILE_SIZE - cameraY;
@@ -197,6 +200,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 3;
       ctx.stroke();
+    }
+
+    // Draw speaking indicator (green ring)
+    if (isSpeaking) {
+      ctx.strokeStyle = '#4ECDC4';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2, 16, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Add microphone icon
+      ctx.fillStyle = '#4ECDC4';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('🎤', screenX + TILE_SIZE / 2, screenY + TILE_SIZE + 10);
     }
 
     // Draw username
